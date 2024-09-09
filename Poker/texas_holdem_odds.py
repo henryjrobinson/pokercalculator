@@ -1,5 +1,5 @@
 import random
-from collections import Counter
+from itertools import combinations
 
 class Card:
     def __init__(self, rank, suit):
@@ -14,7 +14,7 @@ def create_deck():
     suits = 'HDCS'
     return [Card(rank, suit) for rank in ranks for suit in suits]
 
-def calculate_odds(active_players, my_hand, community_cards, num_simulations=10000):
+def calculate_odds(num_players, my_hand, community_cards, num_simulations=10000):
     deck = create_deck()
     
     # Remove known cards from the deck
@@ -31,9 +31,9 @@ def calculate_odds(active_players, my_hand, community_cards, num_simulations=100
         remaining_community = 5 - len(community_cards)
         simulated_community = community_cards + deck[:remaining_community]
         
-        # Deal cards to other active players
+        # Deal cards to other players
         other_players_cards = [deck[remaining_community + i*2 : remaining_community + (i+1)*2] 
-                               for i in range(active_players - 1)]
+                               for i in range(num_players - 1)]
         
         # Evaluate hands
         my_score = evaluate_hand(my_hand + simulated_community)
@@ -50,42 +50,35 @@ def calculate_odds(active_players, my_hand, community_cards, num_simulations=100
 def evaluate_hand(cards):
     ranks = '23456789TJQKA'
     hand_ranks = [ranks.index(card.rank) for card in cards]
-    suit_counts = Counter(card.suit for card in cards)
-    rank_counts = Counter(hand_ranks)
     
     # Check for flush
-    flush = max(suit_counts.values()) >= 5
+    if len(set(card.suit for card in cards)) == 1:
+        return max(hand_ranks) + 100  # Flush
     
     # Check for straight
     sorted_ranks = sorted(set(hand_ranks))
-    straight = False
-    for i in range(len(sorted_ranks) - 4):
-        if sorted_ranks[i:i+5] == list(range(sorted_ranks[i], sorted_ranks[i] + 5)):
-            straight = True
-            break
-    # Special case for Ace-low straight
-    if sorted_ranks == [0, 1, 2, 3, 12]:
-        straight = True
+    if len(sorted_ranks) >= 5 and sorted_ranks[-1] - sorted_ranks[-5] == 4:
+        return sorted_ranks[-1] + 90  # Straight
     
-    # Determine hand rank
-    if flush and straight:
-        return 8  # Straight flush
-    elif max(rank_counts.values()) == 4:
-        return 7  # Four of a kind
-    elif set(rank_counts.values()) == {3, 2}:
-        return 6  # Full house
-    elif flush:
-        return 5  # Flush
-    elif straight:
-        return 4  # Straight
-    elif max(rank_counts.values()) == 3:
-        return 3  # Three of a kind
+    # Count rank occurrences
+    rank_counts = {rank: hand_ranks.count(rank) for rank in set(hand_ranks)}
+    
+    if 4 in rank_counts.values():
+        return max(r for r, count in rank_counts.items() if count == 4) + 80  # Four of a kind
+    elif 3 in rank_counts.values() and 2 in rank_counts.values():
+        return max(r for r, count in rank_counts.items() if count == 3) + 70  # Full house
+    elif 3 in rank_counts.values():
+        return max(r for r, count in rank_counts.items() if count == 3) + 60  # Three of a kind
     elif list(rank_counts.values()).count(2) == 2:
-        return 2  # Two pair
-    elif max(rank_counts.values()) == 2:
-        return 1  # One pair
+        return max(r for r, count in rank_counts.items() if count == 2) + 50  # Two pair
+    elif 2 in rank_counts.values():
+        return max(r for r, count in rank_counts.items() if count == 2) + 40  # One pair
     else:
-        return 0  # High card
+        return max(hand_ranks)  # High card
 
-def parse_cards(card_string):
-    return [Card(card[0], card[1]) for card in card_string.split()]
+if __name__ == "__main__":
+    # Example usage
+    my_hand = [Card('A', 'H'), Card('K', 'D')]
+    community_cards = [Card('7', 'S'), Card('8', 'C'), Card('9', 'D')]
+    odds = calculate_odds(4, my_hand, community_cards)
+    print(f"Odds of winning: {odds:.2%}")

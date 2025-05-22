@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 248, 250, 252;
+  --card-background: 255, 255, 255;
+  --primary-color: 34, 197, 94;
+  --secondary-color: 14, 165, 233;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-rgb: 15, 23, 42;
+    --card-background: 30, 41, 59;
+    --primary-color: 34, 197, 94;
+    --secondary-color: 14, 165, 233;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden;
+  }
+  
+  .card-header {
+    @apply bg-green-600 text-white p-4 font-semibold;
+  }
+  
+  .card-body {
+    @apply p-4;
+  }
+  
+  .btn-primary {
+    @apply bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md transition-colors;
+  }
+  
+  .btn-outline {
+    @apply border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700 py-2 px-4 rounded-md transition-colors;
+  }
+  
+  .input-field {
+    @apply border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700;
+  }
+  
+  .card-grid {
+    @apply grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2;
+  }
+  
+  .playing-card {
+    @apply relative w-16 h-24 rounded-md bg-white shadow-md flex flex-col justify-between p-1 cursor-pointer border border-gray-200 hover:border-green-500 transition-colors;
+  }
+  
+  .playing-card-selected {
+    @apply border-2 border-green-500 shadow-lg;
+  }
+  
+  .playing-card-red {
+    @apply text-red-600;
+  }
+  
+  .playing-card-black {
+    @apply text-slate-900;
+  }
+  
+  .odds-display {
+    @apply text-4xl font-bold text-green-600;
+  }
+  
+  .stage-badge {
+    @apply bg-blue-500 text-white text-sm font-semibold px-2 py-1 rounded-full;
+  }
+}

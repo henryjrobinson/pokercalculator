@@ -1,0 +1,6 @@
+{
+  "/holdem/page": "app/holdem/page.js",
+  "/page": "app/page.js",
+  "/omaha/page": "app/omaha/page.js",
+  "/texas-holdem/page": "app/texas-holdem/page.js"
+}

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Odds Calculator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px 10px 0 0;
+        }
+        .odds-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .stage-badge {
+            font-size: 1rem;
+            padding: 5px 10px;
+        }
+        .card-input {
+            text-transform: uppercase;
+        }
+        .history-item {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .history-item:hover {
+            background-color: #f0f0f0;
+        }
+        .footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="display-4">Poker Odds Calculator</h1>
+                <p class="lead">Calculate your winning odds with Monte Carlo simulation</p>
+            </div>
+        </div>
+
+        <!-- Game Setup Form -->
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card" id="setupCard">
+                    <div class="card-header">
+                        New Game Setup
+                    </div>
+                    <div class="card-body">
+                        <form id="startForm">
+                            <div class="mb-3">
+                                <label for="gameType" class="form-label">Game Type:</label>
+                                <select class="form-select" id="gameType" required>
+                                    <option value="holdem">Texas Hold'em</option>
+                                    <option value="omaha">Omaha</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="myHand" class="form-label">Your Hand:</label>
+                                <input type="text" class="form-control card-input" id="myHand" required placeholder="e.g., AH KD">
+                                <small class="form-text text-muted">
+                                    For Hold'em: e.g., AH KD (2 cards)<br>
+                                    For Omaha: e.g., AH KD QS JC (4 cards)
+                                </small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="numPlayers" class="form-label">Number of Players:</label>
+                                <input type="number" class="form-control" id="numPlayers" min="2" max="10" value="4" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Start Game</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Area (initially hidden) -->
+        <div id="gameArea" style="display: none;">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Game in Progress</span>
+                            <span class="badge bg-primary stage-badge" id="stageHeader">Preflop</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <div class="mb-2">Your winning odds</div>
+                                <div class="odds-display" id="oddsDisplay">0.00%</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="communityCards" class="form-label">Community Cards:</label>
+                                <input type="text" class="form-control card-input" id="communityCards" placeholder="e.g., AH 7D 2S">
+                                <small class="form-text text-muted">Add up to 5 cards as they appear</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="foldedPlayers" class="form-label">Players Folded:</label>
+                                <input type="number" class="form-control" id="foldedPlayers" min="0" value="0">
+                            </div>
+
+                            <form id="updateForm">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">Calculate Odds</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="resetBtn">Start New Hand</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hand History -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            Hand History
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush" id="handHistoryList">
+                                <!-- Hand history items will be added here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer text-center">
+            <p>© 2025 Poker Odds Calculator - Powered by Monte Carlo simulation</p>
+        </div>
+    </div>
+
+    <script>
+        let gameId;
+        let currentPlayers;
+        let currentGameType;
+        
+        // Format odds as percentage
+        function formatOdds(odds) {
+            return (odds * 100).toFixed(2) + '%';
+        }
+        
+        // Get the next stage in the game
+        function getNextStage(currentStage) {
+            const stages = ['Preflop', 'Flop', 'Turn', 'River'];
+            const currentIndex = stages.indexOf(currentStage);
+            return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : stages[currentIndex];
+        }
+        
+        // Update game display with response data
+        function updateGameDisplay(data) {
+            $('#oddsDisplay').text(formatOdds(data.odds));
+            $('#stageHeader').text(data.stage);
+        }
+        
+        // Update hand history display
+        function updateHandHistory(history) {
+            const historyList = $('#handHistoryList');
+            historyList.empty();
+            
+            if (history && history.length > 0) {
+                history.forEach((hand, index) => {
+                    const communityStr = hand.community_cards || 'None';
+                    const oddsPct = formatOdds(hand.odds);
+                    const gameTypeDisplay = hand.game_type === 'holdem' ? 'Texas Hold\'em' : 'Omaha';
+                    
+                    historyList.append(`
+                        <li class="list-group-item history-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${gameTypeDisplay}</strong> - ${hand.players} players
+                                </div>
+                                <span class="badge bg-success">${oddsPct}</span>
+                            </div>
+                            <div class="small text-muted">Hand: ${hand.my_hand}</div>
+                            <div class="small text-muted">Community: ${communityStr}</div>
+                        </li>
+                    `);
+                });
+            } else {
+                historyList.append('<li class="list-group-item">No hand history available</li>');
+            }
+        }
+        
+        // Start game form submission
+        $('#startForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            currentGameType = $('#gameType').val();
+            const myHand = $('#myHand').val().toUpperCase();
+            
+            // Validate hand input
+            let expectedCards = currentGameType === 'holdem' ? 2 : 4;
+            let cards = myHand.trim().split(/\s+/);
+            
+            if (cards.length !== expectedCards) {
+                alert(`Please enter exactly ${expectedCards} cards for ${currentGameType === 'holdem' ? 'Texas Hold\'em' : 'Omaha'}`);
+                return;
+            }
+            
+            $.ajax({
+                url: '/start_game',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    game_type: currentGameType,
+                    my_hand: myHand,
+                    num_players: $('#numPlayers').val()
+                }),
+                success: function(response) {
+                    gameId = response.game_id;
+                    currentPlayers = response.active_players;
+                    updateGameDisplay(response);
+                    updateHandHistory(response.hand_history);
+                    $('#setupCard').hide();
+                    $('#gameArea').show();
+                },
+                error: function(xhr) {
+                    let errorMsg = 'An error occurred';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    alert(errorMsg);
+                }
+            });
+        });
+        
+        // Update game form submission
+        $('#updateForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            let foldedPlayers = parseInt($('#foldedPlayers').val()) || 0;
+            let remainingPlayers = currentPlayers - foldedPlayers;
+            
+            if (remainingPlayers < 2) {
+                alert('There must be at least 2 players remaining in the game');
+                return;
+            }
+            
+            $.ajax({
+                url: '/update_game',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    game_id: gameId,
+                    community_cards: $('#communityCards').val().toUpperCase(),
+                    active_players: remainingPlayers,
+                    stage: getNextStage($('#stageHeader').text())
+                }),
+                success: function(response) {
+                    currentPlayers = response.active_players;
+                    updateGameDisplay(response);
+                    updateHandHistory(response.hand_history);
+                    $('#foldedPlayers').val(0);
+                },
+                error: function(xhr) {
+                    let errorMsg = 'An error occurred';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    alert(errorMsg);
+                }
+            });
+        });
+        
+        // Reset button click
+        $('#resetBtn').on('click', function() {
+            $.ajax({
+                url: '/reset_game',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                success: function() {
+                    $('#gameArea').hide();
+                    $('#setupCard').show();
+                    $('#myHand').val('');
+                    $('#communityCards').val('');
+                    $('#foldedPlayers').val(0);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
